@@ -20,9 +20,9 @@ class ChatListCreateAV(ListCreateAPIView):
         serializer = DataTalkSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
-        print(instance.file.url)
+        # print(instance.file.url)
 
-        chat = DataTalk(instance.file.url)
+        chat = DataTalk()
         # query = request.data.get('query')
 
 
