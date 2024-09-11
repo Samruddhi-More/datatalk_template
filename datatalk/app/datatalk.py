@@ -1,6 +1,7 @@
 from langchain.document_loaders import UnstructuredURLLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.document_loaders import CSVLoader
+from langchain_community.document_loaders import UnstructuredExcelLoader, UnstructuredWordDocumentLoader
 from langchain_community.document_loaders import PyPDFLoader
 # from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
@@ -30,36 +31,36 @@ class DataTalk:
             cls._instance = super(DataTalk, cls).__new__(cls)
         return cls._instance
     
-    def source_type(self, filepath):
-        # file = ''
-        folderpath = os.path.dirname(self.filepath)
-        filename = os.path.basename(self.filepath)
-        if filename.endswith('.xlsx'):
-            csvname = filename.split('.')[0] + '.csv'
-            file = os.path.join(folderpath, csvname)
-            df = pd.read_excel(self.filepath)
-            df.to_csv(file)
-        elif filename.endswith('.docx'):
-            pdfname = filename.split('.')[0] + '.pdf'
-            file = os.path.join(folderpath, pdfname)
-            convert(self.filepath, file)
-        else: 
-            file = self.filepath
+    # def source_type(self, filepath):
+    #     # file = ''
+    #     folderpath = os.path.dirname(self.filepath)
+    #     filename = os.path.basename(self.filepath)
+    #     if filename.endswith('.xlsx'):
+    #         csvname = filename.split('.')[0] + '.csv'
+    #         file = os.path.join(folderpath, csvname)
+    #         df = pd.read_excel(self.filepath)
+    #         df.to_csv(file)
+    #     elif filename.endswith('.docx'):
+    #         pdfname = filename.split('.')[0] + '.pdf'
+    #         file = os.path.join(folderpath, pdfname)
+    #         convert(self.filepath, file)
+    #     else: 
+    #         file = self.filepath
 
-        return file
+    #     return file
     
     def data_loader(self, filepath):
-        if filepath.endswith('.csv') or filepath.endswith('.docx'):
-            file = self.source_type(filepath)
-        else:
-            file = filepath
         loader = None
-        if file.endswith('.csv'):
-            loader = CSVLoader(file_path=file)
-        if file.endswith('.pdf'):
-            loader = PyPDFLoader(file)
+        if filepath.endswith('.xlsx'):
+            loader = UnstructuredExcelLoader(filepath)
+        if filepath.endswith('.csv'):
+            loader = CSVLoader(file_path=filepath)
+        if filepath.endswith('.pdf'):
+            loader = PyPDFLoader(filepath)
+        if filepath.endswith('.docx'):
+            loader = UnstructuredWordDocumentLoader(filepath)
         if 'http' in filepath:
-            loader = UnstructuredURLLoader(urls=[file])
+            loader = UnstructuredURLLoader(urls=[filepath])
         if loader is not None:
             data = loader.load()
             return data
@@ -89,7 +90,7 @@ class DataTalk:
             )
             self.retriever = self.vector_store.as_retriever()
 
-            self.template = """Respond to the prompt based on the following context: {context}
+            self.template = """Respond to the user query:{query} based on the following context: {context}
             """
             self.prompt = ChatPromptTemplate.from_template(self.template)
 
@@ -99,7 +100,7 @@ class DataTalk:
     
     def get_response(self,query):
         if self._initialized:
-            response = self.chain.invoke({"context": self.get_relevant_documents(query)}, query)
+            response = self.chain.invoke({"query": query,"context": self.retriever.get_relevant_documents(query)})
 
             return response
 
